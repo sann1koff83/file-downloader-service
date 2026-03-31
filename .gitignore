@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+config.json
+*.err
+*.out
+*.wrapper*
+deploy/*.err
+deploy/*.out
+deploy/*.wrapper*
