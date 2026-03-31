@@ -36,35 +36,6 @@ ELMA должна отправлять отдельный запрос на ка
 
 ---
 
-## Структура проекта
-
-file-downloader-service/
-├─ config.json
-├─ package.json
-├─ package-lock.json
-├─ tsconfig.json
-├─ README.md
-├─ dist/
-├─ src/
-│  ├─ app.ts
-│  ├─ config.ts
-│  ├─ services/
-│  │  └─ download-service.ts
-│  ├─ types/
-│  │  └─ download.ts
-│  └─ utils/
-│     ├─ auth.ts
-│     └─ validation.ts
-└─ deploy/
-   ├─ build.bat
-   ├─ run.bat
-   ├─ install-service.bat
-   ├─ uninstall-service.bat
-   ├─ FileDownloaderService.exe
-   └─ FileDownloaderService.xml
-
----
-
 ## Конфиг
 
 Сервис читает настройки из файла: `config.json`
@@ -72,17 +43,18 @@ file-downloader-service/
 
 Как создать конфиг:
 
-Скопировать config.example.json
-Переименовать копию в config.json
-Заполнить реальные значения
+- Скопировать config.example.json
+- Переименовать копию в config.json
+- Заполнить реальные значения
 
 Пояснение параметров
-`server.host` - Адрес, на котором слушает HTTP сервер.
-`server.port` - Порт HTTP API.
-`download.headersTimeoutMs` - Максимальное время ожидания начала ответа от удалённого сервера.
-`download.bodyTimeoutMs` - Максимальное время ожидания скачивания тела ответа.
-`security.apiKey` - Секретный ключ, который клиент должен передавать в заголовке
 
-x-api-key: your-secret-key
+- `server.host` - Адрес, на котором слушает HTTP сервер.
+- `server.port` - Порт HTTP API.
+- `download.headersTimeoutMs` - Максимальное время ожидания начала ответа от удалённого сервера.
+- `download.bodyTimeoutMs` - Максимальное время ожидания скачивания тела ответа.
+- `security.apiKey` - Секретный ключ, который клиент должен передавать в заголовке (x-api-key: your-secret-key)
+- Заполнить реальные значения
+
 ---
 
