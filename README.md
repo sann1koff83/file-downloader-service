@@ -261,7 +261,7 @@ x-api-key: your-api-key
 {
   "success": false,
   "errorCode": "DOWNLOAD_ERROR",
-  "message": "No write access to target folder: \\\\kaz-fs2\\public\\06 Департамент управления персоналом\\00 HR PROJECTS\\01 Elma Promo\\Input\\"
+  "message": "No write access to target folder: C:\\Temp\\MissingFolder"
 }
 ```
 
