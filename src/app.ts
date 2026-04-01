@@ -1,42 +1,25 @@
 import Fastify, { FastifyReply, FastifyRequest } from 'fastify';
 import { config } from './config';
-import { DownloadFileRequest } from './types/download';
 import { isAuthorized } from './utils/auth';
-import { normalizeTargetFolder, validateRequestBody } from './utils/validation';
-import { processDownload } from './services/download-service';
+import { validateBatchRequestBody } from './utils/validation';
+import { DownloadBatchRequest } from './types/download';
+import {
+  processDownloadBatch,
+  validateStorageAvailability,
+} from './services/download-service';
 
 const fastify = Fastify({
   logger: true,
 });
 
-const API_PREFIX = '/downloader_service';
-
-fastify.get(`${API_PREFIX}/health`, async () => {
+fastify.get('/health', async () => {
   return { status: 'ok' };
 });
 
-fastify.get(`${API_PREFIX}/config`, async (request, reply) => {
-  if (!isAuthorized(request)) {
-    return reply.code(401).send({
-      success: false,
-      errorCode: 'UNAUTHORIZED',
-      message: 'Unauthorized',
-    });
-  }
-
-  return {
-    server: config.server,
-    download: config.download,
-    security: {
-      apiKeyConfigured: Boolean(config.security.apiKey),
-    },
-  };
-});
-
 fastify.post(
-  `${API_PREFIX}/api/downloads`,
+  '/api/downloads',
   async (
-    requestFastify: FastifyRequest<{ Body: DownloadFileRequest }>,
+    requestFastify: FastifyRequest<{ Body: DownloadBatchRequest }>,
     reply: FastifyReply
   ) => {
     try {
@@ -49,7 +32,7 @@ fastify.post(
       }
 
       const body = requestFastify.body;
-      const validationError = validateRequestBody(body);
+      const validationError = validateBatchRequestBody(body);
 
       if (validationError) {
         return reply.code(400).send({
@@ -59,31 +42,27 @@ fastify.post(
         });
       }
 
-      const requestBody: DownloadFileRequest = {
-        ...body,
-        targetFolder: normalizeTargetFolder(body.targetFolder)!,
-        fileName: body.fileName.trim(),
-        url: body.url.trim(),
+      const normalizedRequest: DownloadBatchRequest = {
+        files: body.files.map((item) => ({
+          url: item.url.trim(),
+          fileName: item.fileName.trim(),
+        })),
       };
 
       requestFastify.log.info(
         {
-          url: requestBody.url,
-          targetFolder: requestBody.targetFolder,
-          fileName: requestBody.fileName,
+          filesCount: normalizedRequest.files.length,
         },
-        'Download request received'
+        'Download batch request received'
       );
 
-      const result = await processDownload(requestBody);
+      const result = await processDownloadBatch(normalizedRequest);
 
       requestFastify.log.info(
         {
-          url: result.url,
-          savedPath: result.savedPath,
-          skipped: result.skipped,
+          filesCount: result.files.length,
         },
-        result.skipped ? 'Download skipped: file already exists' : 'Download completed successfully'
+        'Download batch completed successfully'
       );
 
       return reply.code(200).send(result);
@@ -95,7 +74,7 @@ fastify.post(
         {
           error: errorMessage,
         },
-        'Download failed'
+        'Download batch failed'
       );
 
       return reply.code(500).send({
@@ -128,14 +107,16 @@ process.on('SIGTERM', () => {
 
 async function start(): Promise<void> {
   try {
+    await validateStorageAvailability();
+
     const address = await fastify.listen({
       host: config.server.host,
       port: config.server.port,
     });
 
-    fastify.log.info({ address, apiPrefix: API_PREFIX }, 'Server started');
+    fastify.log.info({ address }, 'Server started');
   } catch (error) {
-    fastify.log.error(error, 'Listen error');
+    fastify.log.error(error, 'Startup failed');
     process.exit(1);
   }
 }

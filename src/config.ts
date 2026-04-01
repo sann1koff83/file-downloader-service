@@ -6,9 +6,14 @@ export interface AppConfig {
     host: string;
     port: number;
   };
+  storage: {
+    targetFolder: string;
+    tempFolder: string;
+  };
   download: {
     headersTimeoutMs: number;
     bodyTimeoutMs: number;
+    concurrency: number;
   };
   security: {
     apiKey: string;
@@ -27,9 +32,7 @@ function resolveConfigPath(): string {
     }
   }
 
-  throw new Error(
-    `Config file not found. Checked paths: ${candidates.join(', ')}`
-  );
+  throw new Error(`Config file not found. Checked paths: ${candidates.join(', ')}`);
 }
 
 function loadConfig(): AppConfig {
@@ -57,6 +60,10 @@ function loadConfig(): AppConfig {
     throw new Error('Config error: server section is required');
   }
 
+  if (!config.storage) {
+    throw new Error('Config error: storage section is required');
+  }
+
   if (!config.download) {
     throw new Error('Config error: download section is required');
   }
@@ -78,6 +85,20 @@ function loadConfig(): AppConfig {
   }
 
   if (
+    !config.storage.targetFolder ||
+    typeof config.storage.targetFolder !== 'string'
+  ) {
+    throw new Error('Config error: storage.targetFolder must be a non-empty string');
+  }
+
+  if (
+    !config.storage.tempFolder ||
+    typeof config.storage.tempFolder !== 'string'
+  ) {
+    throw new Error('Config error: storage.tempFolder must be a non-empty string');
+  }
+
+  if (
     typeof config.download.headersTimeoutMs !== 'number' ||
     config.download.headersTimeoutMs <= 0
   ) {
@@ -92,6 +113,16 @@ function loadConfig(): AppConfig {
   ) {
     throw new Error(
       'Config error: download.bodyTimeoutMs must be a positive number'
+    );
+  }
+
+  if (
+    typeof config.download.concurrency !== 'number' ||
+    !Number.isInteger(config.download.concurrency) ||
+    config.download.concurrency <= 0
+  ) {
+    throw new Error(
+      'Config error: download.concurrency must be a positive integer'
     );
   }
 

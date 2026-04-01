@@ -1,108 +1,25 @@
 # File Downloader Service
 
-Windows Service на Node.js/TypeScript для скачивания файла по HTTP/HTTPS-ссылке и сохранения в существующую локальную или сетевую папку.
+Windows Service на Node.js/TypeScript для скачивания файлов по HTTP/HTTPS и сохранения в целевую директорию.
 
 ## Назначение
 
 Сервис предназначен для интеграции с ELMA365.
 
-ELMA365 отправляет HTTP POST-запрос с параметрами файла, который нужно скачать и сохранить на локальном сервере или в сетевой папке. Сервис принимает запрос, скачивает файл по указанной ссылке и сохраняет его в переданную папку.
+Сервис:
+- принимает массив файлов на загрузку;
+- скачивает файлы во временную директорию;
+- при успешной загрузке всей пачки переносит их в целевую директорию;
+- при ошибке не переносит файлы в целевую директорию.
 
-## Возможности
+## Endpoints
 
-- принимает HTTP API-запрос на скачивание файла;
-- скачивает файл по `http` или `https`;
-- сохраняет файл под указанным именем;
-- не перезаписывает существующий файл;
-- не создаёт новые папки;
-- проверяет, что целевая папка существует;
-- проверяет наличие прав на запись в целевую папку;
-- возвращает результат выполнения в JSON;
-- может работать как Windows Service через WinSW.
-
-## Базовый префикс API
-
-Все маршруты сервиса публикуются с префиксом:
-
-```text
-/downloader_service
-```
-
-Полные маршруты:
-
-- `GET /downloader_service/health`
-- `GET /downloader_service/config`
-- `POST /downloader_service/api/downloads`
-
-Это сделано для того, чтобы сервис мог работать на одном сервере вместе с другими сервисами без конфликта маршрутов.
-
-## Как работает сервис
-
-В запросе передаются:
-
-- `targetFolder` — путь к существующей папке, куда нужно сохранить файл;
-- `url` — ссылка на скачивание файла;
-- `fileName` — имя файла, под которым его нужно сохранить.
-
-После этого сервис:
-
-1. валидирует входные параметры;
-2. проверяет авторизацию по `x-api-key`;
-3. проверяет, что целевая папка существует;
-4. проверяет, что путь указывает именно на папку;
-5. проверяет наличие прав на запись;
-6. если файл уже существует, возвращает успешный ответ с признаком пропуска;
-7. скачивает файл во временный `.part` файл;
-8. после успешного скачивания переименовывает временный файл в итоговый;
-9. возвращает JSON-ответ.
-
-## Контракт интеграции
-
-### Один запрос = один файл
-
-Один HTTP-запрос обрабатывает один файл.
-
-Если нужно скачать несколько файлов, ELMA365 должна отправлять несколько отдельных запросов. При необходимости это можно делать параллельно.
-
-### Поведение при существующем файле
-
-Если файл с таким именем уже существует в указанной папке, сервис:
-
-- не перезаписывает его;
-- не возвращает ошибку;
-- возвращает успешный ответ с признаком пропуска.
-
-### Поведение при отсутствии папки
-
-Если папка `targetFolder` не существует, сервис возвращает ошибку.
-
-Сервис не создаёт новые папки автоматически.
-
-### Поведение при отсутствии прав на запись
-
-Если у процесса нет прав на запись в `targetFolder`, сервис возвращает ошибку.
-
-Это особенно важно для сетевых папок и UNC-путей.
-
-## Технологии
-
-- Node.js
-- TypeScript
-- Fastify
-- undici
-- WinSW
+- `GET /health`
+- `POST /api/downloads`
 
 ## Конфигурация
 
-Сервис читает настройки из файла `config.json`.
-
-Файл `config.json` должен находиться в корне проекта.
-
-### Как создать конфиг
-
-1. Скопировать `config.example.json`
-2. Переименовать копию в `config.json`
-3. Заполнить реальные значения
+Сервис читает настройки из файла `config.json` в корне проекта.
 
 ### Пример `config.json`
 
@@ -112,9 +29,14 @@ ELMA365 отправляет HTTP POST-запрос с параметрами ф
     "host": "0.0.0.0",
     "port": 3000
   },
+  "storage": {
+    "targetFolder": "C:\\FileDownloader",
+    "tempFolder": "C:\\FileDownloaderTemp"
+  },
   "download": {
     "headersTimeoutMs": 5000,
-    "bodyTimeoutMs": 45000
+    "bodyTimeoutMs": 45000,
+    "concurrency": 10
   },
   "security": {
     "apiKey": "your-api-key-here"
@@ -122,23 +44,83 @@ ELMA365 отправляет HTTP POST-запрос с параметрами ф
 }
 ```
 
-### Параметры конфигурации
+### Параметры
 
-- `server.host` — адрес, на котором запускается HTTP-сервер.
-- `server.port` — порт HTTP API.
-- `download.headersTimeoutMs` — максимальное время ожидания начала ответа от удалённого сервера.
-- `download.bodyTimeoutMs` — максимальное время ожидания скачивания тела ответа.
-- `security.apiKey` — секретный ключ, который клиент должен передавать в заголовке `x-api-key`.
+- `server.host` — адрес HTTP-сервера
+- `server.port` — порт HTTP API
+- `storage.targetFolder` — конечная папка для сохранения файлов
+- `storage.tempFolder` — временная папка для промежуточной загрузки
+- `download.headersTimeoutMs` — ожидание начала ответа от удалённого сервера
+- `download.bodyTimeoutMs` — ожидание загрузки тела ответа
+- `download.concurrency` — количество параллельных загрузок внутри одной пачки
+- `security.apiKey` — ключ авторизации, передаётся в заголовке `x-api-key`
 
-## API
+## API contract
 
-### Проверка состояния
+### Request
 
-#### `GET /downloader_service/health`
+```ts
+interface DownloadItemRequest {
+  url: string;
+  fileName: string;
+}
 
-Используется для проверки, что сервис запущен и доступен.
+interface DownloadBatchRequest {
+  files: DownloadItemRequest[];
+}
+```
 
-Ответ:
+### Success response
+
+```ts
+interface DownloadedFileInfo {
+  sourceFileName: string;
+  generatedFileName: string;
+  savedPath: string;
+  url: string;
+}
+
+interface DownloadBatchResponse {
+  success: true;
+  message: string;
+  files: DownloadedFileInfo[];
+}
+```
+
+### Error response
+
+```ts
+interface ErrorResponse {
+  success: false;
+  errorCode: string;
+  message: string;
+}
+```
+
+## Правила работы
+
+- `targetFolder` и `tempFolder` задаются через конфиг
+- при старте сервиса проверяется доступность `targetFolder` и `tempFolder`
+- итоговое имя файла формируется в сервисе с использованием UUID
+- файлы сначала сохраняются в `tempFolder`
+- если хотя бы один файл из пачки не скачался, в `targetFolder` не переносится ничего
+- временные файлы из `tempFolder` очищаются отдельной задачей
+
+## Авторизация
+
+Для вызова `POST /api/downloads` нужно передавать заголовок:
+
+```http
+x-api-key: your-api-key
+```
+
+## Health check
+
+```http
+GET /health
+```
+
+Response:
 
 ```json
 {
@@ -146,228 +128,42 @@ ELMA365 отправляет HTTP POST-запрос с параметрами ф
 }
 ```
 
-### Получение конфигурации
-
-#### `GET /downloader_service/config`
-
-Возвращает текущую конфигурацию сервиса без значения секретного ключа.
-
-Требует заголовок авторизации:
-
-```http
-x-api-key: your-api-key
-```
-
-Пример ответа:
-
-```json
-{
-  "server": {
-    "host": "0.0.0.0",
-    "port": 3000
-  },
-  "download": {
-    "headersTimeoutMs": 5000,
-    "bodyTimeoutMs": 45000
-  },
-  "security": {
-    "apiKeyConfigured": true
-  }
-}
-```
-
-### Скачивание файла
-
-#### `POST /downloader_service/api/downloads`
-
-Скачивает файл по URL и сохраняет его в указанную папку.
-
-#### Заголовки
-
-```http
-Content-Type: application/json
-x-api-key: your-api-key
-```
-
-#### Тело запроса
-
-```json
-{
-  "targetFolder": "C:\\Temp\\Downloads",
-  "url": "https://example.com/files/report.pdf",
-  "fileName": "report.pdf"
-}
-```
-
-#### Успешный ответ
-
-```json
-{
-  "success": true,
-  "skipped": false,
-  "message": "File downloaded successfully",
-  "url": "https://example.com/files/report.pdf",
-  "fileName": "report.pdf",
-  "savedPath": "C:\\Temp\\Downloads\\report.pdf"
-}
-```
-
-#### Ответ, если файл уже существует
-
-```json
-{
-  "success": true,
-  "skipped": true,
-  "message": "File already exists",
-  "url": "https://example.com/files/report.pdf",
-  "fileName": "report.pdf",
-  "savedPath": "C:\\Temp\\Downloads\\report.pdf"
-}
-```
-
-#### Ошибка валидации
-
-```json
-{
-  "success": false,
-  "errorCode": "VALIDATION_ERROR",
-  "message": "targetFolder must be a valid absolute path and cannot be a disk root"
-}
-```
-
-#### Ошибка авторизации
-
-```json
-{
-  "success": false,
-  "errorCode": "UNAUTHORIZED",
-  "message": "Unauthorized"
-}
-```
-
-#### Ошибка, если папка не существует
-
-```json
-{
-  "success": false,
-  "errorCode": "DOWNLOAD_ERROR",
-  "message": "Target folder does not exist: C:\\Temp\\MissingFolder"
-}
-```
-
-#### Ошибка, если нет прав на запись
-
-```json
-{
-  "success": false,
-  "errorCode": "DOWNLOAD_ERROR",
-  "message": "No write access to target folder: C:\\Temp\\MissingFolder"
-}
-```
-
-#### Ошибка скачивания
-
-```json
-{
-  "success": false,
-  "errorCode": "DOWNLOAD_ERROR",
-  "message": "Failed to download file. Status code: 404"
-}
-```
-
-## Логика сохранения файла
-
-Сервис сначала сохраняет файл во временный файл с расширением `.part`.
-
-Пример:
-
-- итоговый файл: `C:\Temp\Downloads\report.pdf`
-- временный файл: `C:\Temp\Downloads\report.pdf.part`
-
-Это нужно для того, чтобы при обрыве скачивания не оставлять в целевой папке повреждённый итоговый файл.
-
-После успешного завершения загрузки временный файл переименовывается в итоговый.
-
-## Поддержка сетевых папок
-
-Важно:
-- папка должна существовать заранее;
-- у учётной записи, под которой запущен Windows Service, должны быть права на запись в эту папку;
-- если служба запущена под `LocalSystem`, доступ к сетевым ресурсам может отсутствовать.
-
-Для сетевых папок обычно рекомендуется запускать службу под доменной или сервисной учётной записью с нужными правами.
-
-## Сборка проекта
-
-Установка зависимостей:
+## Локальный запуск
 
 ```bash
 npm install
-```
-
-Сборка:
-
-```bash
-npm run build
-```
-
-После успешной сборки приложение должно быть собрано в папку `dist`.
-
-## Запуск локально
-
-```bash
 npm run build
 npm start
 ```
 
-После запуска сервис будет доступен по адресу:
+## Windows Service
 
-```text
-http://localhost:3000/downloader_service/health
+Файлы для установки находятся в папке `deploy`.
+
+Основные файлы:
+- `build.bat`
+- `install-service.bat`
+- `uninstall-service.bat`
+- `run.bat`
+- `cleanup-temp.ps1`
+
+Порядок установки:
+1. создать `config.json`
+2. выполнить `deploy\build.bat`
+3. выполнить `deploy\install-service.bat`
+
+## Очистка временной папки
+
+Для очистки временной папки используется `deploy\cleanup-temp.ps1`.
+
+Пример запуска:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy\cleanup-temp.ps1 -TempFolder "C:\FileDownloaderTemp" -OlderThanHours 24
 ```
-
-## Установка как Windows Service
-
-В папке `deploy` находятся файлы для установки сервиса через WinSW.
-
-### Основные файлы
-
-- `FileDownloaderService.exe` — WinSW wrapper
-- `FileDownloaderService.xml` — конфигурация службы
-- `build.bat` — сборка проекта
-- `install-service.bat` — установка и запуск службы
-- `uninstall-service.bat` — удаление службы
-- `run.bat` — локальный запуск приложения
-
-### Порядок установки
-
-1. Создать и заполнить `config.json`
-2. Выполнить `deploy\build.bat`
-3. Выполнить `deploy\install-service.bat`
-
-## Удаление или переустановка сервиса
-
-Если нужно переустановить сервис:
-
-1. остановить текущую службу;
-2. удалить службу;
-3. пересобрать проект;
-4. установить службу заново.
 
 ## Требования
 
 - Windows
 - Node.js
 - npm
-
-## Примечания
-
-- `targetFolder` передаётся внешней системой и должен быть корректным абсолютным путём на сервере;
-- сервис не перезаписывает существующие файлы;
-- сервис не создаёт отсутствующие каталоги;
-- один запрос обрабатывает только один файл;
-- при необходимости несколько файлов должны отправляться несколькими запросами.
-
-## Статус
-
-Текущая версия ориентирована на MVP-сценарий интеграции с ELMA365.

@@ -1,5 +1,5 @@
 import path from 'path';
-import { DownloadFileRequest } from '../types/download';
+import { DownloadBatchRequest, DownloadItemRequest } from '../types/download';
 
 export function isValidHttpUrl(value: string): boolean {
   try {
@@ -28,8 +28,8 @@ export function sanitizeFileName(fileName: string): string | null {
   return trimmed;
 }
 
-export function normalizeTargetFolder(targetFolder: string): string | null {
-  const trimmed = targetFolder.trim();
+export function normalizeFolderPath(folderPath: string): string | null {
+  const trimmed = folderPath.trim();
 
   if (!trimmed) {
     return null;
@@ -50,35 +50,47 @@ export function normalizeTargetFolder(targetFolder: string): string | null {
   return resolvedPath;
 }
 
-export function validateRequestBody(body: unknown): string | null {
+function validateFileItem(item: Partial<DownloadItemRequest>, index: number): string | null {
+  if (!item.fileName || typeof item.fileName !== 'string') {
+    return `files[${index}].fileName is required and must be a string`;
+  }
+
+  if (sanitizeFileName(item.fileName) === null) {
+    return `files[${index}].fileName is invalid`;
+  }
+
+  if (!item.url || typeof item.url !== 'string') {
+    return `files[${index}].url is required and must be a string`;
+  }
+
+  if (!isValidHttpUrl(item.url)) {
+    return `files[${index}].url must be a valid http/https URL`;
+  }
+
+  return null;
+}
+
+export function validateBatchRequestBody(body: unknown): string | null {
   if (!body || typeof body !== 'object') {
     return 'Request body must be a JSON object';
   }
 
-  const requestBody = body as Partial<DownloadFileRequest>;
+  const requestBody = body as Partial<DownloadBatchRequest>;
 
-  if (!requestBody.targetFolder || typeof requestBody.targetFolder !== 'string') {
-    return 'targetFolder is required and must be a string';
+  if (!Array.isArray(requestBody.files)) {
+    return 'files is required and must be an array';
   }
 
-  if (normalizeTargetFolder(requestBody.targetFolder) === null) {
-    return 'targetFolder must be a valid absolute path and cannot be a disk root';
+  if (requestBody.files.length === 0) {
+    return 'files must contain at least one item';
   }
 
-  if (!requestBody.url || typeof requestBody.url !== 'string') {
-    return 'url is required and must be a string';
-  }
-
-  if (!isValidHttpUrl(requestBody.url)) {
-    return 'url must be a valid http/https URL';
-  }
-
-  if (!requestBody.fileName || typeof requestBody.fileName !== 'string') {
-    return 'fileName is required and must be a string';
-  }
-
-  if (sanitizeFileName(requestBody.fileName) === null) {
-    return 'fileName is invalid';
+  for (let i = 0; i < requestBody.files.length; i += 1) {
+    const item = requestBody.files[i];
+    const itemError = validateFileItem(item ?? {}, i);
+    if (itemError) {
+      return itemError;
+    }
   }
 
   return null;
