@@ -24,6 +24,39 @@ async function pathExists(filePath: string): Promise<boolean> {
   }
 }
 
+async function ensureDirectoryExistsAndWritable(dirPath: string): Promise<void> {
+  try {
+    const stat = await fsp.stat(dirPath);
+
+    if (!stat.isDirectory()) {
+      throw new Error(`Target folder is not a directory: ${dirPath}`);
+    }
+
+    await fsp.access(dirPath, fs.constants.W_OK);
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === 'ENOENT') {
+      throw new Error(`Target folder does not exist: ${dirPath}`);
+    }
+
+    if (nodeError.code === 'EACCES' || nodeError.code === 'EPERM') {
+      throw new Error(`No write access to target folder: ${dirPath}`);
+    }
+
+    if (
+      error instanceof Error &&
+      error.message.startsWith('Target folder is not a directory:')
+    ) {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to access target folder "${dirPath}": ${nodeError.message || 'Unknown error'}`
+    );
+  }
+}
+
 async function removeFileIfExists(filePath: string): Promise<void> {
   try {
     await fsp.rm(filePath, { force: true });
@@ -43,7 +76,7 @@ export async function processDownload(
     throw new Error('targetFolder is invalid');
   }
 
-  await fsp.mkdir(normalizedTargetFolder, { recursive: true });
+  await ensureDirectoryExistsAndWritable(normalizedTargetFolder);
 
   const safeFileName = sanitizeFileName(requestBody.fileName);
   if (!safeFileName) {
