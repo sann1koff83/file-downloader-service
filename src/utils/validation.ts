@@ -1,3 +1,4 @@
+import path from 'path';
 import { DownloadFileRequest } from '../types/download';
 
 export function isValidHttpUrl(value: string): boolean {
@@ -27,6 +28,28 @@ export function sanitizeFileName(fileName: string): string | null {
   return trimmed;
 }
 
+export function normalizeTargetFolder(targetFolder: string): string | null {
+  const trimmed = targetFolder.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const resolvedPath = path.resolve(trimmed);
+
+  if (!path.isAbsolute(resolvedPath)) {
+    return null;
+  }
+
+  const parsed = path.parse(resolvedPath);
+
+  if (resolvedPath === parsed.root) {
+    return null;
+  }
+
+  return resolvedPath;
+}
+
 export function validateRequestBody(body: unknown): string | null {
   if (!body || typeof body !== 'object') {
     return 'Request body must be a JSON object';
@@ -36,6 +59,10 @@ export function validateRequestBody(body: unknown): string | null {
 
   if (!requestBody.targetFolder || typeof requestBody.targetFolder !== 'string') {
     return 'targetFolder is required and must be a string';
+  }
+
+  if (normalizeTargetFolder(requestBody.targetFolder) === null) {
+    return 'targetFolder must be a valid absolute path and cannot be a disk root';
   }
 
   if (!requestBody.url || typeof requestBody.url !== 'string') {

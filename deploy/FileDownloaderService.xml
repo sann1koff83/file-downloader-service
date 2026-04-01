@@ -1,12 +1,13 @@
 <service>
   <id>FileDownloaderService</id>
   <name>FileDownloaderService</name>
-  <description>Node.js file downloader service</description>
+  <description>Downloads files by URL and saves them to target folders from ELMA365 requests</description>
 
   <executable>node</executable>
   <arguments>%BASE%\..\dist\app.js</arguments>
   <workingdirectory>%BASE%\..</workingdirectory>
 
+  <logpath>%BASE%\logs</logpath>
   <log mode="roll-by-size">
     <sizeThreshold>10240</sizeThreshold>
     <keepFiles>5</keepFiles>

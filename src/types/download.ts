@@ -5,6 +5,8 @@ export interface DownloadFileRequest {
 }
 
 export interface DownloadFileResponse {
+  success: true;
+  skipped: boolean;
   message: string;
   url: string;
   fileName: string;

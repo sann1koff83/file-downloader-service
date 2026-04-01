@@ -5,6 +5,10 @@ config.json
 *.err
 *.out
 *.wrapper*
+
 deploy/*.err
 deploy/*.out
 deploy/*.wrapper*
+deploy/logs/
+
+logs/
