@@ -151,7 +151,6 @@ npm start
 - `install-service.bat`
 - `uninstall-service.bat`
 - `run.bat`
-- `cleanup-temp.ps1`
 
 Порядок установки:
 1. создать `config.json`
