@@ -15,6 +15,10 @@ export interface AppConfig {
     bodyTimeoutMs: number;
     concurrency: number;
   };
+  cleanup: {
+    cron: string;
+    olderThanHours: number;
+  };
   security: {
     apiKey: string;
   };
@@ -66,6 +70,10 @@ function loadConfig(): AppConfig {
 
   if (!config.download) {
     throw new Error('Config error: download section is required');
+  }
+
+  if (!config.cleanup) {
+    throw new Error('Config error: cleanup section is required');
   }
 
   if (!config.security) {
@@ -124,6 +132,17 @@ function loadConfig(): AppConfig {
     throw new Error(
       'Config error: download.concurrency must be a positive integer'
     );
+  }
+
+  if (!config.cleanup.cron || typeof config.cleanup.cron !== 'string') {
+    throw new Error('Config error: cleanup.cron must be a non-empty string');
+  }
+
+  if (
+    typeof config.cleanup.olderThanHours !== 'number' ||
+    config.cleanup.olderThanHours <= 0
+  ) {
+    throw new Error('Config error: cleanup.olderThanHours must be a positive number');
   }
 
   if (!config.security.apiKey || typeof config.security.apiKey !== 'string') {

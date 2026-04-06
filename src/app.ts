@@ -7,6 +7,7 @@ import {
   processDownloadBatch,
   validateStorageAvailability,
 } from './services/download-service';
+import { startCleanupJob } from './services/cleanup-service';
 
 const fastify = Fastify({
   logger: true,
@@ -108,6 +109,8 @@ process.on('SIGTERM', () => {
 async function start(): Promise<void> {
   try {
     await validateStorageAvailability();
+
+    startCleanupJob(fastify.log);
 
     const address = await fastify.listen({
       host: config.server.host,

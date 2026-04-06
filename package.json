@@ -1,6 +1,7 @@
 {
   "name": "file-downloader-service",
   "version": "1.0.0",
+  "description": "Windows Service for downloading files",
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
@@ -8,11 +9,13 @@
     "dev": "node dist/app.js"
   },
   "dependencies": {
-    "fastify": "^5.0.0",
-    "undici": "^7.0.0"
+    "fastify": "^5.5.0",
+    "node-cron": "^3.0.3",
+    "undici": "^7.16.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^24.3.0",
+    "@types/node-cron": "^3.0.11",
+    "typescript": "^5.9.2"
   }
 }

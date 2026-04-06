@@ -154,13 +154,12 @@ npm start
 
 ## Очистка временной папки
 
-Для очистки временной папки используется `deploy\cleanup-temp.ps1`.
+Очистка `tempFolder` выполняется самим приложением по расписанию.
 
-Пример запуска:
+Настройки очистки задаются в секции `cleanup` файла `config.json`:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\deploy\cleanup-temp.ps1 -TempFolder "C:\FileDownloaderTemp" -OlderThanHours 24
-```
+- `cleanup.cron` — cron-выражение расписания
+- `cleanup.olderThanHours` — удалять файлы и папки старше указанного времени
 
 ## Требования
 

@@ -12,6 +12,10 @@
     "bodyTimeoutMs": 45000,
     "concurrency": 10
   },
+  "cleanup": {
+    "cron": "0 * * * *",
+    "olderThanHours": 24
+  },
   "security": {
     "apiKey": "your-api-key-here"
   }
