@@ -30,13 +30,17 @@ Windows Service на Node.js/TypeScript для скачивания файлов
     "port": 3000
   },
   "storage": {
-    "targetFolder": "C:\\FileDownloader",
+    "targetFolder": "C:\\Temp\\downloads",
     "tempFolder": "C:\\FileDownloaderTemp"
   },
   "download": {
     "headersTimeoutMs": 5000,
     "bodyTimeoutMs": 45000,
     "concurrency": 10
+  },
+  "cleanup": {
+    "cron": "0 * * * *",
+    "olderThanHours": 24
   },
   "security": {
     "apiKey": "your-api-key-here"
@@ -53,6 +57,8 @@ Windows Service на Node.js/TypeScript для скачивания файлов
 - `download.headersTimeoutMs` — ожидание начала ответа от удалённого сервера
 - `download.bodyTimeoutMs` — ожидание загрузки тела ответа
 - `download.concurrency` — количество параллельных загрузок внутри одной пачки
+- `cleanup.cron` — cron-выражение расписания
+- `cleanup.olderThanHours` — удалять файлы и папки старше указанного времени
 - `security.apiKey` — ключ авторизации, передаётся в заголовке `x-api-key`
 
 ## API contract
