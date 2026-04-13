@@ -31,7 +31,7 @@ Windows Service на Node.js/TypeScript для скачивания файлов
     "port": 3000
   },
   "storage": {
-    "targetFolder": "\\\\kaz-fs2\\HR PROJECTS\\01 Elma Promo\\Input",
+    "targetFolder": "C:\\Downloads",
     "tempFolder": "C:\\FileDownloaderTemp"
   },
   "download": {
@@ -145,15 +145,15 @@ Response:
 
 ## Особенности работы с сетевой папкой
 
-Если `targetFolder` указывает на сетевую шару, например `\\\\kaz-fs2\\...`, служба должна быть запущена под учётной записью, у которой есть права на запись в эту папку.
+Если `targetFolder` указывает на сетевую шару, служба должна быть запущена под учётной записью, у которой есть права на запись в эту папку.
 
 Для этого в конфиге используется блок:
 
 ```json
-"serviceLogon": {
-  "username": "DOMAIN\\svc_file_downloader",
-  "password": "your-password-here"
-}
+  "serviceLogon": {
+    "username": "DOMAIN\\account",
+    "password": "your-password"
+  }
 ```
 
 Во время установки `install-service.bat` применяет эти креды к Windows Service.
