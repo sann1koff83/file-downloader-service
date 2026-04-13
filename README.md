@@ -9,7 +9,8 @@ Windows Service на Node.js/TypeScript для скачивания файлов
 Сервис:
 - принимает массив файлов на загрузку;
 - скачивает файлы во временную директорию;
-- при успешной загрузке всей пачки переносит их в целевую директорию;
+- при успешной загрузке всей пачки копирует их в целевую директорию;
+- после успешного копирования удаляет временные файлы;
 - при ошибке не переносит файлы в целевую директорию.
 
 ## Endpoints
@@ -30,7 +31,7 @@ Windows Service на Node.js/TypeScript для скачивания файлов
     "port": 3000
   },
   "storage": {
-    "targetFolder": "C:\\Temp\\downloads",
+    "targetFolder": "\\\\kaz-fs2\\HR PROJECTS\\01 Elma Promo\\Input",
     "tempFolder": "C:\\FileDownloaderTemp"
   },
   "download": {
@@ -41,6 +42,10 @@ Windows Service на Node.js/TypeScript для скачивания файлов
   "cleanup": {
     "cron": "0 * * * *",
     "olderThanHours": 24
+  },
+  "serviceLogon": {
+    "username": "DOMAIN\\account",
+    "password": "your-password"
   },
   "security": {
     "apiKey": "your-api-key-here"
@@ -57,8 +62,10 @@ Windows Service на Node.js/TypeScript для скачивания файлов
 - `download.headersTimeoutMs` — ожидание начала ответа от удалённого сервера
 - `download.bodyTimeoutMs` — ожидание загрузки тела ответа
 - `download.concurrency` — количество параллельных загрузок внутри одной пачки
-- `cleanup.cron` — cron-выражение расписания
+- `cleanup.cron` — расписание очистки `tempFolder`
 - `cleanup.olderThanHours` — удалять файлы и папки старше указанного времени
+- `serviceLogon.username` — учётная запись, под которой должна запускаться служба
+- `serviceLogon.password` — пароль учётной записи службы
 - `security.apiKey` — ключ авторизации, передаётся в заголовке `x-api-key`
 
 ## API contract
@@ -105,12 +112,14 @@ interface ErrorResponse {
 
 ## Правила работы
 
-- `targetFolder` и `tempFolder` задаются через конфиг
+- `targetFolder` и `tempFolder` задаются только через конфиг
+- сервис не принимает целевую директорию через API
 - при старте сервиса проверяется доступность `targetFolder` и `tempFolder`
 - итоговое имя файла формируется в сервисе с использованием UUID
 - файлы сначала сохраняются в `tempFolder`
-- если хотя бы один файл из пачки не скачался, в `targetFolder` не переносится ничего
-- временные файлы из `tempFolder` очищаются отдельной задачей
+- если хотя бы один файл из пачки не скачался, в `targetFolder` не копируется ничего
+- временные файлы из `tempFolder` очищаются самим приложением по cron-расписанию
+- служба настраивается на запуск под учётной записью из `serviceLogon`
 
 ## Авторизация
 
@@ -133,6 +142,35 @@ Response:
   "status": "ok"
 }
 ```
+
+## Особенности работы с сетевой папкой
+
+Если `targetFolder` указывает на сетевую шару, например `\\\\kaz-fs2\\...`, служба должна быть запущена под учётной записью, у которой есть права на запись в эту папку.
+
+Для этого в конфиге используется блок:
+
+```json
+"serviceLogon": {
+  "username": "DOMAIN\\svc_file_downloader",
+  "password": "your-password-here"
+}
+```
+
+Во время установки `install-service.bat` применяет эти креды к Windows Service.
+
+## Перенос файлов между temp и target
+
+Если `tempFolder` и `targetFolder` находятся на разных storage, например:
+- `tempFolder` на `C:\...`
+- `targetFolder` на `\\my-network\...`
+
+то обычный `rename` работать не будет.
+
+Поэтому сервис после успешной загрузки использует:
+- `copyFile`
+- затем удаление временного файла
+
+Это позволяет корректно работать со сценарием локальный temp + сетевая конечная папка.
 
 ## Локальный запуск
 
@@ -165,6 +203,15 @@ npm start
 
 - `cleanup.cron` — cron-выражение расписания
 - `cleanup.olderThanHours` — удалять файлы и папки старше указанного времени
+
+Пример:
+
+```json
+"cleanup": {
+  "cron": "0 * * * *",
+  "olderThanHours": 24
+}
+```
 
 ## Требования
 
