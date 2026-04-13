@@ -19,6 +19,10 @@ export interface AppConfig {
     cron: string;
     olderThanHours: number;
   };
+  serviceLogon: {
+    username: string;
+    password: string;
+  };
   security: {
     apiKey: string;
   };
@@ -74,6 +78,10 @@ function loadConfig(): AppConfig {
 
   if (!config.cleanup) {
     throw new Error('Config error: cleanup section is required');
+  }
+
+  if (!config.serviceLogon) {
+    throw new Error('Config error: serviceLogon section is required');
   }
 
   if (!config.security) {
@@ -143,6 +151,20 @@ function loadConfig(): AppConfig {
     config.cleanup.olderThanHours <= 0
   ) {
     throw new Error('Config error: cleanup.olderThanHours must be a positive number');
+  }
+
+  if (
+    !config.serviceLogon.username ||
+    typeof config.serviceLogon.username !== 'string'
+  ) {
+    throw new Error('Config error: serviceLogon.username must be a non-empty string');
+  }
+
+  if (
+    !config.serviceLogon.password ||
+    typeof config.serviceLogon.password !== 'string'
+  ) {
+    throw new Error('Config error: serviceLogon.password must be a non-empty string');
   }
 
   if (!config.security.apiKey || typeof config.security.apiKey !== 'string') {

@@ -40,6 +40,25 @@ if not exist "!CONFIG_FILE!" (
     exit /b 1
 )
 
+echo Reading service logon settings from config.json...
+
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "(Get-Content -Raw '!CONFIG_FILE!' | ConvertFrom-Json).serviceLogon.username"`) do set SERVICE_USERNAME=%%i
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "(Get-Content -Raw '!CONFIG_FILE!' | ConvertFrom-Json).serviceLogon.password"`) do set SERVICE_PASSWORD=%%i
+
+if "!SERVICE_USERNAME!"=="" (
+    echo ERROR: serviceLogon.username not found in config.json
+    pause
+    exit /b 1
+)
+
+if "!SERVICE_PASSWORD!"=="" (
+    echo ERROR: serviceLogon.password not found in config.json
+    pause
+    exit /b 1
+)
+
+echo Service will run as: !SERVICE_USERNAME!
+
 echo Stopping old service if exists...
 "!SERVICE_EXE!" stop >nul 2>nul
 
@@ -54,6 +73,16 @@ echo Installing new service...
 "!SERVICE_EXE!" install
 if errorlevel 1 (
     echo ERROR: service install failed
+    pause
+    exit /b 1
+)
+
+timeout /t 2 /nobreak >nul
+
+echo Applying service logon account...
+sc config "!SERVICE_NAME!" obj= "!SERVICE_USERNAME!" password= "!SERVICE_PASSWORD!"
+if errorlevel 1 (
+    echo ERROR: failed to configure service logon account
     pause
     exit /b 1
 )

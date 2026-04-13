@@ -16,6 +16,10 @@
     "cron": "0 * * * *",
     "olderThanHours": 24
   },
+  "serviceLogon": {
+    "username": "DOMAIN\\account",
+    "password": "your-password"
+  },
   "security": {
     "apiKey": "your-api-key-here"
   }

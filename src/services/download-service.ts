@@ -52,8 +52,7 @@ async function ensureDirectoryExistsAndWritable(
     }
 
     throw new Error(
-      `Failed to access ${directoryLabel.toLowerCase()} "${dirPath}": ${
-        nodeError.message || 'Unknown error'
+      `Failed to access ${directoryLabel.toLowerCase()} "${dirPath}": ${nodeError.message || 'Unknown error'
       }`
     );
   }
@@ -203,7 +202,8 @@ export async function processDownloadBatch(
     const movedFiles: DownloadedFileInfo[] = [];
 
     for (const preparedFile of preparedFiles) {
-      await fsp.rename(preparedFile.tempPath, preparedFile.finalPath);
+      await fsp.copyFile(preparedFile.tempPath, preparedFile.finalPath);
+      await fsp.unlink(preparedFile.tempPath);
 
       movedFiles.push({
         sourceFileName: preparedFile.sourceFileName,
